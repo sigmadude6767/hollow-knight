@@ -1,3 +1,5 @@
+// Hollow Knight-inspired game with double jumps, health, enemies, coins, levels
+
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 
@@ -11,7 +13,7 @@ document.addEventListener("keyup", e => keys[e.key] = false);
 let level = 1;
 let coinsCollected = 0;
 
-// --- PLAYER ---
+// --- PLAYER SETUP ---
 const player = {
   x: 100,
   y: 500,
@@ -23,7 +25,7 @@ const player = {
   jumpPower: -15,
   gravity: 0.8,
   grounded: false,
-  jumpsLeft: 2,
+  jumpsLeft: 2, // allows double jump
   facing: 1,
   attacking: false,
   attackTimer: 0,
@@ -31,7 +33,7 @@ const player = {
   invincible: 0
 };
 
-// --- LEVELS DATA ---
+// --- LEVEL DATA ---
 const levels = {
   1: {
     platforms: [
@@ -53,81 +55,19 @@ const levels = {
   2: {
     platforms: [
       { x: 0, y: 650, width: 1200, height: 50 },
-      { x: 250, y: 550, width: 200, height: 80 },
-      { x: 600, y: 450, width: 250, height: 80 },
-      { x: 950, y: 350, width: 200, height: 80 },
-    ],
-    coins: [
-      { x: 300, y: 510, collected: false },
-      { x: 650, y: 410, collected: false },
-      { x: 1000, y: 310, collected: false },
-    ],
-    enemies: [
-      { x: 400, y: 500, width: 40, height: 40, speed: 2, alive: true },
-      { x: 800, y: 600, width: 40, height: 40, speed: 2, alive: true },
-      { x: 1050, y: 350, width: 40, height: 40, speed: 2, alive: true },
-    ]
-  },
-  3: {
-    platforms: [
-      { x: 0, y: 650, width: 1200, height: 50 },
-      { x: 150, y: 500, width: 150, height: 80 },
-      { x: 400, y: 400, width: 200, height: 80 },
-      { x: 700, y: 300, width: 250, height: 80 },
-      { x: 1000, y: 500, width: 150, height: 80 },
-    ],
-    coins: [
-      { x: 180, y: 460, collected: false },
-      { x: 450, y: 360, collected: false },
-      { x: 750, y: 260, collected: false },
-      { x: 1020, y: 460, collected: false },
-    ],
-    enemies: [
-      { x: 350, y: 580, width: 40, height: 40, speed: 2.2, alive: true },
-      { x: 650, y: 380, width: 40, height: 40, speed: 2.2, alive: true },
-      { x: 1000, y: 480, width: 40, height: 40, speed: 2.2, alive: true },
-    ]
-  },
-  4: {
-    platforms: [
-      { x: 0, y: 650, width: 1200, height: 50 },
       { x: 200, y: 550, width: 200, height: 80 },
-      { x: 500, y: 450, width: 200, height: 80 },
-      { x: 800, y: 350, width: 250, height: 80 },
-      { x: 1100, y: 250, width: 100, height: 80 },
+      { x: 600, y: 450, width: 250, height: 80 },
+      { x: 1000, y: 350, width: 150, height: 80 },
     ],
     coins: [
       { x: 250, y: 510, collected: false },
-      { x: 550, y: 410, collected: false },
-      { x: 850, y: 310, collected: false },
-      { x: 1120, y: 210, collected: false },
+      { x: 650, y: 410, collected: false },
+      { x: 1050, y: 310, collected: false },
     ],
     enemies: [
-      { x: 300, y: 580, width: 40, height: 40, speed: 2.5, alive: true },
-      { x: 600, y: 430, width: 40, height: 40, speed: 2.5, alive: true },
-      { x: 900, y: 330, width: 40, height: 40, speed: 2.5, alive: true },
-      { x: 1100, y: 230, width: 40, height: 40, speed: 2.5, alive: true },
-    ]
-  },
-  5: {
-    platforms: [
-      { x: 0, y: 650, width: 1200, height: 50 },
-      { x: 150, y: 500, width: 200, height: 80 },
-      { x: 450, y: 400, width: 250, height: 80 },
-      { x: 750, y: 300, width: 250, height: 80 },
-      { x: 1050, y: 200, width: 150, height: 80 },
-    ],
-    coins: [
-      { x: 180, y: 460, collected: false },
-      { x: 500, y: 360, collected: false },
-      { x: 780, y: 260, collected: false },
-      { x: 1080, y: 160, collected: false },
-    ],
-    enemies: [
-      { x: 200, y: 580, width: 40, height: 40, speed: 3, alive: true },
-      { x: 500, y: 380, width: 40, height: 40, speed: 3, alive: true },
-      { x: 800, y: 280, width: 40, height: 40, speed: 3, alive: true },
-      { x: 1050, y: 180, width: 40, height: 40, speed: 3, alive: true },
+      { x: 800, y: 600, width: 40, height: 40, speed: 2, alive: true },
+      { x: 400, y: 500, width: 40, height: 40, speed: 2, alive: true },
+      { x: 1000, y: 300, width: 40, height: 40, speed: 2, alive: true },
     ]
   }
 };
@@ -169,4 +109,161 @@ function drawPlatforms() {
   for (let p of platforms) ctx.fillRect(p.x, p.y, p.width, p.height);
 }
 
-function drawCoins
+function drawCoins() {
+  for (let c of coins) {
+    if (!c.collected) {
+      ctx.beginPath();
+      ctx.arc(c.x, c.y, 10, 0, Math.PI * 2);
+      ctx.fillStyle = "gold";
+      ctx.fill();
+    }
+  }
+}
+
+function drawEnemies() {
+  for (let e of enemies) {
+    if (e.alive) {
+      ctx.fillStyle = "#ff5555";
+      ctx.fillRect(e.x, e.y, e.width, e.height);
+    }
+  }
+}
+
+function drawUI() {
+  ctx.fillStyle = "white";
+  ctx.font = "20px Arial";
+  ctx.fillText(`Health: ${player.health}`, 20, 30);
+  ctx.fillText(`Coins: ${coinsCollected}/${coins.length}`, 20, 60);
+  ctx.fillText(`Level: ${level}`, 20, 90);
+}
+
+// --- UPDATE FUNCTIONS ---
+function updatePlayer() {
+  player.dx = 0;
+  if (keys["a"] || keys["ArrowLeft"]) { player.dx = -player.speed; player.facing = -1; }
+  if (keys["d"] || keys["ArrowRight"]) { player.dx = player.speed; player.facing = 1; }
+
+  // DOUBLE JUMP: if grounded, reset jumpsLeft
+  if (player.grounded) player.jumpsLeft = 2;
+
+  // Jump input
+  if ((keys["w"] || keys["ArrowUp"] || keys[" "]) && player.jumpsLeft > 0 && !keys._jumpPressed) {
+    player.dy = player.jumpPower;
+    player.grounded = false;
+    player.jumpsLeft--;
+    keys._jumpPressed = true; // prevent continuous jump while holding key
+  }
+  if (!(keys["w"] || keys["ArrowUp"] || keys[" "])) keys._jumpPressed = false;
+
+  if (keys["j"] && !player.attacking) {
+    player.attacking = true;
+    player.attackTimer = 10;
+  }
+
+  player.dy += player.gravity;
+  player.x += player.dx;
+  player.y += player.dy;
+
+  // Platform collision
+  player.grounded = false;
+  for (let p of platforms) {
+    if (player.x < p.x + p.width &&
+        player.x + player.width > p.x &&
+        player.y + player.height <= p.y + 10 &&
+        player.y + player.height + player.dy >= p.y) {
+      player.y = p.y - player.height;
+      player.dy = 0;
+      player.grounded = true;
+    }
+  }
+
+  // Attack logic
+  if (player.attacking) {
+    player.attackTimer--;
+    if (player.attackTimer <= 0) player.attacking = false;
+    const attackRange = {
+      x: player.facing === 1 ? player.x + player.width : player.x - 50,
+      y: player.y + player.height / 2 - 10,
+      w: 50, h: 20
+    };
+    for (let e of enemies) {
+      if (e.alive &&
+        attackRange.x < e.x + e.width &&
+        attackRange.x + attackRange.w > e.x &&
+        attackRange.y < e.y + e.height &&
+        attackRange.y + attackRange.h > e.y) {
+        e.alive = false;
+      }
+    }
+  }
+
+  // Coin collection
+  for (let c of coins) {
+    if (!c.collected &&
+      player.x < c.x + 10 &&
+      player.x + player.width > c.x - 10 &&
+      player.y < c.y + 10 &&
+      player.y + player.height > c.y - 10) {
+      c.collected = true;
+      coinsCollected++;
+      if (coinsCollected === coins.length) {
+        if (levels[level + 1]) resetLevel(level + 1);
+        else {
+          alert("🎉 You won the game!");
+          resetLevel(1);
+        }
+      }
+    }
+  }
+
+  if (player.invincible > 0) player.invincible--;
+}
+
+function updateEnemies() {
+  for (let e of enemies) {
+    if (!e.alive) continue;
+
+    // Follow player X and Y
+    if (player.x < e.x) e.x -= e.speed;
+    else if (player.x > e.x) e.x += e.speed;
+
+    if (player.y < e.y) e.y -= e.speed * 0.6;
+    else if (player.y > e.y) e.y += e.speed * 0.6;
+
+    // Collision with player → damage
+    if (player.invincible <= 0 &&
+      player.x < e.x + e.width &&
+      player.x + player.width > e.x &&
+      player.y < e.y + e.height &&
+      player.y + player.height > e.y) {
+      player.health--;
+      player.invincible = 60;
+      if (player.health <= 0) {
+        alert("💀 You Died! Restarting Level...");
+        player.health = 5;
+        resetLevel(level);
+      }
+    }
+  }
+}
+
+// --- MAIN LOOP ---
+function draw() {
+  ctx.fillStyle = "#111";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  drawPlatforms();
+  drawCoins();
+  drawEnemies();
+  drawPlayer();
+  drawUI();
+}
+
+function update() {
+  updatePlayer();
+  updateEnemies();
+  draw();
+  requestAnimationFrame(update);
+}
+
+update();
