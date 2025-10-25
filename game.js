@@ -1,10 +1,11 @@
-// Hollow Knight Inspired Demo with Combat
+// Hollow Knight Inspired Game - Combat Enhanced
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 
 const gravity = 0.8;
 const groundHeight = 80;
 
+// --- Player setup ---
 const player = {
   x: 100,
   y: canvas.height - groundHeight - 50,
@@ -14,24 +15,33 @@ const player = {
   dy: 0,
   speed: 5,
   jumping: false,
-  attacking: false,
   facing: "right",
+  attacking: false,
   attackTimer: 0,
+  attackCooldown: 0,
   health: 3
 };
 
 let enemies = [];
 const keys = {};
 
-// Spawn a few simple enemies
+// --- Spawn a bunch of enemies ---
 function spawnEnemies() {
-  enemies = [
-    { x: 400, y: canvas.height - groundHeight - 40, width: 40, height: 40, color: "#ff5555", dir: 1 },
-    { x: 650, y: canvas.height - groundHeight - 40, width: 40, height: 40, color: "#ff5555", dir: -1 }
-  ];
+  enemies = [];
+  for (let i = 0; i < 6; i++) {
+    enemies.push({
+      x: 300 + i * 120,
+      y: canvas.height - groundHeight - 40,
+      width: 40,
+      height: 40,
+      color: "#ff4444",
+      dir: Math.random() < 0.5 ? 1 : -1,
+      speed: 1 + Math.random() * 2
+    });
+  }
 }
 
-// Draw everything
+// --- Draw everything ---
 function draw() {
   // Background
   ctx.fillStyle = "#0a0a0a";
@@ -41,7 +51,7 @@ function draw() {
   ctx.fillStyle = "#222";
   ctx.fillRect(0, canvas.height - groundHeight, canvas.width, groundHeight);
 
-  // Player
+  // Player body
   ctx.fillStyle = player.color;
   ctx.fillRect(player.x, player.y, player.width, player.height);
 
@@ -50,14 +60,9 @@ function draw() {
   ctx.fillRect(player.x + 8, player.y + 15, 5, 5);
   ctx.fillRect(player.x + 25, player.y + 15, 5, 5);
 
-  // Attack slash (temporary sword effect)
+  // Draw attack arc if attacking
   if (player.attacking) {
-    ctx.fillStyle = "#88ffff";
-    if (player.facing === "right") {
-      ctx.fillRect(player.x + player.width, player.y + 10, 25, 10);
-    } else {
-      ctx.fillRect(player.x - 25, player.y + 10, 25, 10);
-    }
+    drawSlash();
   }
 
   // Enemies
@@ -72,67 +77,33 @@ function draw() {
   ctx.fillText("❤️ " + player.health, 10, 30);
 }
 
-// Handle player movement, gravity, and attacks
-function update() {
-  // Movement
-  if (keys["ArrowLeft"] || keys["a"]) {
-    player.x -= player.speed;
-    player.facing = "left";
-  }
-  if (keys["ArrowRight"] || keys["d"]) {
-    player.x += player.speed;
-    player.facing = "right";
-  }
+// --- Draw glowing slash effect ---
+function drawSlash() {
+  const arcLength = Math.PI / 1.5; // half-circle swing
+  const radius = 45;
+  const centerX = player.facing === "right" ? player.x + player.width : player.x;
+  const centerY = player.y + player.height / 2;
 
-  // Jumping
-  player.dy += gravity;
-  player.y += player.dy;
+  ctx.save();
+  ctx.translate(centerX, centerY);
+  ctx.scale(player.facing === "right" ? 1 : -1, 1);
 
-  if (player.y + player.height >= canvas.height - groundHeight) {
-    player.y = canvas.height - groundHeight - player.height;
-    player.dy = 0;
-    player.jumping = false;
-  }
+  // Create glowing effect
+  const gradient = ctx.createRadialGradient(0, 0, 10, 0, 0, radius);
+  gradient.addColorStop(0, "rgba(200,255,255,0.8)");
+  gradient.addColorStop(1, "rgba(0,255,255,0)");
 
-  // Attack timing
-  if (player.attacking) {
-    player.attackTimer--;
-    if (player.attackTimer <= 0) player.attacking = false;
-  }
-
-  // Enemy movement + collision
-  enemies.forEach((e, i) => {
-    e.x += e.dir * 2;
-    if (e.x < 300 || e.x > 750) e.dir *= -1;
-
-    // Player attack collision
-    if (player.attacking) {
-      let swordBox = {
-        x: player.facing === "right" ? player.x + player.width : player.x - 25,
-        y: player.y + 10,
-        width: 25,
-        height: 10
-      };
-
-      if (rectCollide(swordBox, e)) {
-        enemies.splice(i, 1);
-      }
-    }
-
-    // Enemy touches player
-    if (rectCollide(player, e)) {
-      player.health--;
-      if (player.health <= 0) {
-        respawn();
-      }
-    }
-  });
-
-  draw();
-  requestAnimationFrame(update);
+  ctx.beginPath();
+  ctx.strokeStyle = gradient;
+  ctx.lineWidth = 10;
+  ctx.shadowBlur = 15;
+  ctx.shadowColor = "#88ffff";
+  ctx.arc(0, 0, radius, -arcLength / 2, arcLength / 2);
+  ctx.stroke();
+  ctx.restore();
 }
 
-// Collision check
+// --- Collision check ---
 function rectCollide(a, b) {
   return (
     a.x < b.x + b.width &&
@@ -142,7 +113,30 @@ function rectCollide(a, b) {
   );
 }
 
-// Respawn player
+// --- Attack logic ---
+function performAttack() {
+  if (player.attackCooldown > 0) return; // prevent spamming
+
+  player.attacking = true;
+  player.attackTimer = 15;
+  player.attackCooldown = 30;
+
+  // Compute sword hitbox
+  let swordBox = {
+    x: player.facing === "right" ? player.x + player.width : player.x - 50,
+    y: player.y + 5,
+    width: 50,
+    height: 40
+  };
+
+  // Hit enemies
+  enemies = enemies.filter(e => {
+    if (rectCollide(swordBox, e)) return false; // enemy destroyed
+    return true;
+  });
+}
+
+// --- Respawn logic ---
 function respawn() {
   player.x = 100;
   player.y = canvas.height - groundHeight - 50;
@@ -150,7 +144,53 @@ function respawn() {
   spawnEnemies();
 }
 
-// Input controls
+// --- Game update ---
+function update() {
+  // Move left/right
+  if (keys["ArrowLeft"] || keys["a"]) {
+    player.x -= player.speed;
+    player.facing = "left";
+  }
+  if (keys["ArrowRight"] || keys["d"]) {
+    player.x += player.speed;
+    player.facing = "right";
+  }
+
+  // Gravity
+  player.dy += gravity;
+  player.y += player.dy;
+
+  // Ground collision
+  if (player.y + player.height >= canvas.height - groundHeight) {
+    player.y = canvas.height - groundHeight - player.height;
+    player.dy = 0;
+    player.jumping = false;
+  }
+
+  // Attack timer
+  if (player.attacking) {
+    player.attackTimer--;
+    if (player.attackTimer <= 0) player.attacking = false;
+  }
+  if (player.attackCooldown > 0) player.attackCooldown--;
+
+  // Enemy behavior
+  enemies.forEach(e => {
+    e.x += e.dir * e.speed;
+    if (e.x < 200 || e.x > canvas.width - 60) e.dir *= -1;
+
+    // Enemy touches player
+    if (rectCollide(player, e)) {
+      player.health--;
+      if (player.health <= 0) respawn();
+    }
+  });
+
+  draw();
+  requestAnimationFrame(update);
+}
+
+// --- Controls ---
 window.addEventListener("keydown", (e) => {
   keys[e.key] = true;
 
@@ -161,9 +201,8 @@ window.addEventListener("keydown", (e) => {
   }
 
   // Attack
-  if (e.key === "j" && !player.attacking) {
-    player.attacking = true;
-    player.attackTimer = 15; // short attack duration
+  if (e.key === "j") {
+    performAttack();
   }
 });
 
@@ -171,5 +210,6 @@ window.addEventListener("keyup", (e) => {
   keys[e.key] = false;
 });
 
+// Start
 spawnEnemies();
 update();
