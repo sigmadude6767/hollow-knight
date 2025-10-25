@@ -1,4 +1,4 @@
-// Hollow Knight-inspired platformer with health, enemies, and level progression
+// Hollow Knight-inspired game with double jumps, health, enemies, coins, levels
 
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
@@ -25,6 +25,7 @@ const player = {
   jumpPower: -15,
   gravity: 0.8,
   grounded: false,
+  jumpsLeft: 2, // allows double jump
   facing: 1,
   attacking: false,
   attackTimer: 0,
@@ -84,6 +85,7 @@ function resetLevel(newLevel) {
   player.y = 500;
   player.dy = 0;
   player.dx = 0;
+  player.jumpsLeft = 2;
   coinsCollected = 0;
 }
 
@@ -141,10 +143,17 @@ function updatePlayer() {
   if (keys["a"] || keys["ArrowLeft"]) { player.dx = -player.speed; player.facing = -1; }
   if (keys["d"] || keys["ArrowRight"]) { player.dx = player.speed; player.facing = 1; }
 
-  if ((keys["w"] || keys["ArrowUp"] || keys[" "]) && player.grounded) {
+  // DOUBLE JUMP: if grounded, reset jumpsLeft
+  if (player.grounded) player.jumpsLeft = 2;
+
+  // Jump input
+  if ((keys["w"] || keys["ArrowUp"] || keys[" "]) && player.jumpsLeft > 0 && !keys._jumpPressed) {
     player.dy = player.jumpPower;
     player.grounded = false;
+    player.jumpsLeft--;
+    keys._jumpPressed = true; // prevent continuous jump while holding key
   }
+  if (!(keys["w"] || keys["ArrowUp"] || keys[" "])) keys._jumpPressed = false;
 
   if (keys["j"] && !player.attacking) {
     player.attacking = true;
@@ -198,9 +207,8 @@ function updatePlayer() {
       c.collected = true;
       coinsCollected++;
       if (coinsCollected === coins.length) {
-        if (levels[level + 1]) {
-          resetLevel(level + 1);
-        } else {
+        if (levels[level + 1]) resetLevel(level + 1);
+        else {
           alert("🎉 You won the game!");
           resetLevel(1);
         }
@@ -215,7 +223,7 @@ function updateEnemies() {
   for (let e of enemies) {
     if (!e.alive) continue;
 
-    // Follow player on both axes
+    // Follow player X and Y
     if (player.x < e.x) e.x -= e.speed;
     else if (player.x > e.x) e.x += e.speed;
 
@@ -229,7 +237,7 @@ function updateEnemies() {
       player.y < e.y + e.height &&
       player.y + player.height > e.y) {
       player.health--;
-      player.invincible = 60; // brief invincibility
+      player.invincible = 60;
       if (player.health <= 0) {
         alert("💀 You Died! Restarting Level...");
         player.health = 5;
